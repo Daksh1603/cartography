@@ -66,6 +66,39 @@ async def get_entra_applications(
 
 
 @timeit
+async def get_service_principal_id_for_app(
+    client: GraphServiceClient, app: Application
+) -> str | None:
+    """
+    Gets the service principal ID for a single application.
+
+    :param client: GraphServiceClient
+    :param app: Application object
+    :return: Service principal ID or None if not found
+    """
+    if not app.app_id:
+        return None
+
+    try:
+        # Get the service principal for this application
+        service_principals_page = await client.service_principals.get(
+            request_configuration=client.service_principals.ServicePrincipalsRequestBuilderGetRequestConfiguration(
+                query_parameters=client.service_principals.ServicePrincipalsRequestBuilderGetQueryParameters(
+                    filter=f"appId eq '{app.app_id}'"
+                )
+            )
+        )
+
+        if service_principals_page and service_principals_page.value:
+            service_principal: ServicePrincipal = service_principals_page.value[0]
+            return service_principal.id
+    except Exception as e:
+        logger.debug(f"Could not fetch service principal for app {app.app_id}: {e}")
+
+    return None
+
+
+@timeit
 async def get_app_role_assignments_for_app(
     client: GraphServiceClient, app: Application
 ) -> AsyncGenerator[dict[str, Any], None]:

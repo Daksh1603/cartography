@@ -60,161 +60,6 @@ async def get_entra_applications(
     logger.info(f"Retrieved {count} Entra applications total")
 
 
-<<<<<<< HEAD
-@timeit
-async def get_service_principal_id_for_app(
-    client: GraphServiceClient, app: Application
-) -> str | None:
-    """
-    Gets the service principal ID for a single application.
-
-    :param client: GraphServiceClient
-    :param app: Application object
-    :return: Service principal ID or None if not found
-    """
-    if not app.app_id:
-        return None
-
-    try:
-        # Get the service principal for this application
-        service_principals_page = await client.service_principals.get(
-            request_configuration=client.service_principals.ServicePrincipalsRequestBuilderGetRequestConfiguration(
-                query_parameters=client.service_principals.ServicePrincipalsRequestBuilderGetQueryParameters(
-                    filter=f"appId eq '{app.app_id}'"
-                )
-            )
-        )
-
-        if service_principals_page and service_principals_page.value:
-            service_principal: ServicePrincipal = service_principals_page.value[0]
-            return service_principal.id
-    except Exception as e:
-        logger.debug(f"Could not fetch service principal for app {app.app_id}: {e}")
-
-    return None
-
-
-@timeit
-async def get_app_role_assignments_for_app(
-    client: GraphServiceClient, app: Application
-) -> AsyncGenerator[dict[str, Any], None]:
-    """
-    Gets app role assignments for a single application with safety limits.
-
-    :param client: GraphServiceClient
-    :param app: Application object
-    :return: Generator of app role assignment data as dicts
-    """
-    if not app.app_id:
-        logger.warning(f"Application {app.id} has no app_id, skipping")
-        return
-
-    logger.info(
-        f"Fetching role assignments for application: {app.display_name} ({app.app_id})"
-    )
-
-    # First, get the service principal for this application
-    service_principals_page = await client.service_principals.get(
-        request_configuration=client.service_principals.ServicePrincipalsRequestBuilderGetRequestConfiguration(
-            query_parameters=client.service_principals.ServicePrincipalsRequestBuilderGetQueryParameters(
-                filter=f"appId eq '{app.app_id}'"
-            )
-        )
-    )
-
-    if not service_principals_page or not service_principals_page.value:
-        logger.warning(
-            f"No service principal found for application {app.app_id} ({app.display_name}). Continuing."
-        )
-        return
-
-    service_principal: ServicePrincipal = service_principals_page.value[0]
-
-    # Get assignments for this service principal with pagination and limits
-    # Use maximum page size (999) to get more data per request
-    # Memory is managed through streaming and batching, not page size
-    request_config = client.service_principals.by_service_principal_id(
-        service_principal.id
-    ).app_role_assigned_to.AppRoleAssignedToRequestBuilderGetRequestConfiguration(
-        query_parameters=client.service_principals.by_service_principal_id(
-            service_principal.id
-        ).app_role_assigned_to.AppRoleAssignedToRequestBuilderGetQueryParameters(
-            top=APP_ROLE_ASSIGNMENTS_PAGE_SIZE  # Maximum allowed by Microsoft Graph API
-        )
-    )
-
-    assignments_page: AppRoleAssignmentCollectionResponse | None = (
-        await client.service_principals.by_service_principal_id(
-            service_principal.id
-        ).app_role_assigned_to.get(request_configuration=request_config)
-    )
-
-    assignment_count = 0
-    page_count = 0
-
-    while assignments_page:
-        page_count += 1
-
-        if assignments_page.value:
-            page_valid_count = 0
-            page_skipped_count = 0
-
-            # Process assignments and immediately yield to avoid accumulation
-            for assignment in assignments_page.value:
-                # Only yield if we have valid data since it's possible (but unlikely) for assignment.id to be None
-                if assignment.principal_id:
-                    assignment_count += 1
-                    page_valid_count += 1
-                    yield {
-                        "id": assignment.id,
-                        "app_role_id": assignment.app_role_id,
-                        "created_date_time": assignment.created_date_time,
-                        "principal_id": assignment.principal_id,
-                        "principal_display_name": assignment.principal_display_name,
-                        "principal_type": assignment.principal_type,
-                        "resource_display_name": assignment.resource_display_name,
-                        "resource_id": assignment.resource_id,
-                        "application_app_id": app.app_id,
-                    }
-                else:
-                    page_skipped_count += 1
-
-            # Log page results with details about skipped objects
-            if page_skipped_count > 0:
-                logger.warning(
-                    f"Page {page_count} for {app.display_name}: {page_valid_count} valid assignments, "
-                    f"{page_skipped_count} skipped objects. Total valid: {assignment_count}"
-                )
-            else:
-                logger.debug(
-                    f"Page {page_count} for {app.display_name}: {page_valid_count} assignments. "
-                    f"Total: {assignment_count}"
-                )
-
-            # Force garbage collection after each page
-            gc.collect()
-
-        # Check if we have more pages to fetch
-        if not assignments_page.odata_next_link:
-            break
-
-        # Clear previous page before fetching next
-        assignments_page.value = None
-
-        # Fetch next page
-        logger.debug(
-            f"Fetching page {page_count + 1} of assignments for {app.display_name}"
-        )
-        next_page_url = assignments_page.odata_next_link
-        assignments_page = await client.service_principals.with_url(next_page_url).get()
-
-    logger.info(
-        f"Successfully retrieved {assignment_count} assignments for application {app.display_name} (pages: {page_count})"
-    )
-
-
-=======
->>>>>>> refs/rewritten/master
 def transform_applications(
     applications: list[Application],
 ) -> Generator[dict[str, Any], None, None]:
@@ -231,6 +76,9 @@ def transform_applications(
             "display_name": app.display_name,
             "publisher_domain": app.publisher_domain,
             "sign_in_audience": app.sign_in_audience,
+            "service_principal_id": getattr(
+                app, "_service_principal_id", None
+            ),  # Service Principal Object ID
         }
 
 
@@ -312,13 +160,10 @@ async def sync_entra_applications(
     # Stream and load applications
     async for app in get_entra_applications(client):
         total_app_count += 1
-<<<<<<< HEAD
 
         # Fetch service principal ID for this application
         app._service_principal_id = await get_service_principal_id_for_app(client, app)
 
-=======
->>>>>>> 14ca2499 (Minor Changes)
         apps_batch.append(app)
 
         # Transform and load applications in batches

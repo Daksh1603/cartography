@@ -60,6 +60,7 @@ async def get_entra_applications(
     logger.info(f"Retrieved {count} Entra applications total")
 
 
+>>>>>>> 259a5fc1 (Suggestions addressed)
 def transform_applications(
     applications: list[Application],
 ) -> Generator[dict[str, Any], None, None]:
@@ -150,15 +151,19 @@ async def sync_entra_applications(
     )
 
     # Step 1: Sync applications
-    # Step 1: Sync applications
     app_batch_size = 10  # Batch size for applications
     apps_batch = []
     total_app_count = 0
 
     # Stream and load applications
-    # Stream and load applications
     async for app in get_entra_applications(client):
         total_app_count += 1
+
+        # Fetch service principal ID for this application
+        app._service_principal_id = await get_service_principal_id_for_app(
+            client, app
+        )  # havent made changes to get role assignments for now to match this change. EXPERIMENTING
+
         apps_batch.append(app)
 
         # Transform and load applications in batches
@@ -178,8 +183,6 @@ async def sync_entra_applications(
         load_applications(neo4j_session, transformed_apps, update_tag, tenant_id)
         apps_batch.clear()
         transformed_apps.clear()
-    cleanup_applications(neo4j_session, common_job_parameters)
-    logger.info(f"Completed syncing {total_app_count} applications")
     cleanup_applications(neo4j_session, common_job_parameters)
     logger.info(f"Completed syncing {total_app_count} applications")
     # Final garbage collection

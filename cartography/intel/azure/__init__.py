@@ -7,10 +7,17 @@ import neo4j
 from cartography.config import Config
 from cartography.util import timeit
 
+from . import app_service
 from . import compute
 from . import cosmosdb
+<<<<<<< HEAD
 from . import permission_relationships
 from . import rbac
+=======
+from . import functions
+from . import logic_apps
+from . import resource_groups
+>>>>>>> refs/rewritten/master
 from . import sql
 from . import storage
 from . import subscription
@@ -42,7 +49,25 @@ def _sync_one_subscription(
         update_tag,
         common_job_parameters,
     )
+<<<<<<< HEAD
     rbac.sync(
+=======
+    app_service.sync(
+        neo4j_session,
+        credentials,
+        subscription_id,
+        update_tag,
+        common_job_parameters,
+    )
+    functions.sync(
+        neo4j_session,
+        credentials,
+        subscription_id,
+        update_tag,
+        common_job_parameters,
+    )
+    logic_apps.sync(
+>>>>>>> refs/rewritten/master
         neo4j_session,
         credentials,
         subscription_id,
@@ -63,8 +88,14 @@ def _sync_one_subscription(
         update_tag,
         common_job_parameters,
     )
+<<<<<<< HEAD
     permission_relationships.sync(
         neo4j_session,
+=======
+    resource_groups.sync(
+        neo4j_session,
+        credentials,
+>>>>>>> refs/rewritten/master
         subscription_id,
         update_tag,
         common_job_parameters,

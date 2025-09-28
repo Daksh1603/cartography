@@ -312,10 +312,13 @@ async def sync_entra_applications(
     # Stream and load applications
     async for app in get_entra_applications(client):
         total_app_count += 1
+<<<<<<< HEAD
 
         # Fetch service principal ID for this application
         app._service_principal_id = await get_service_principal_id_for_app(client, app)
 
+=======
+>>>>>>> 14ca2499 (Minor Changes)
         apps_batch.append(app)
 
         # Transform and load applications in batches

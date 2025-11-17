@@ -722,7 +722,7 @@ Representation of a GCP [IAM Policy Binding](https://cloud.google.com/iam/docs/r
 
 | Field                | Description                                                                      |
 | -------------------- | -------------------------------------------------------------------------------- |
-| id                   | The unique identifier for the policy binding in  the format "{role}_{resource}". |
+| id                   | The unique identifier for the policy binding in  the format "{resource}_{role}". |
 | role                 | The name of the GCP role being granted.                                          |
 | resource             | The full resource name where the policy binding is attached.                     |
 | resource_type        | The type of resource.                                                            |

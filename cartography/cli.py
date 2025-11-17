@@ -379,7 +379,7 @@ class CLI:
             type=str,
             default="cartography/data/gcp_permission_relationships.yaml",
             help=(
-                "The path to the GCP permission relationships mapping file."
+                "The path to the GCP permission relationships mapping file. "
                 "If omitted the default GCP permission relationships will be used"
             ),
         )

@@ -119,9 +119,9 @@ def transform_bindings(data: dict[str, Any]) -> list[dict[str, Any]]:
                 if not filtered_members:
                     continue
 
-                # Deduplicate bindings by (role, resource)
+                # Deduplicate bindings by (resource, role)
                 condition_expr = condition.get("expression") if condition else None
-                key = (role, resource)
+                key = (resource, role)
 
                 if key in bindings:
                     existing_members = set(bindings[key]["members"])

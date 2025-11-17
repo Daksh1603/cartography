@@ -67,8 +67,6 @@ def evaluate_clause(clause: str, match: str) -> bool:
 
 
 def evaluate_scope_for_resource(assignment: dict, resource_scope: str) -> bool:
-    if "scope" not in assignment:
-        return False
     scope = assignment["scope"]
     # scope is now a compiled regex pattern
     return evaluate_clause(scope, resource_scope)

@@ -2,7 +2,6 @@ import logging
 from typing import Any
 
 import neo4j
-from google.auth.credentials import Credentials as GoogleCredentials
 from google.cloud.asset_v1 import AssetServiceClient
 from google.cloud.asset_v1.types import BatchGetEffectiveIamPoliciesRequest
 from google.cloud.asset_v1.types import SearchAllIamPoliciesRequest
@@ -20,9 +19,8 @@ logger = logging.getLogger(__name__)
 def get_policy_bindings(
     project_id: str,
     common_job_parameters: dict[str, Any],
-    credentials: GoogleCredentials | None = None,
+    client: AssetServiceClient,
 ) -> dict[str, Any]:
-    client = AssetServiceClient(credentials=credentials)
     org_id = common_job_parameters.get("ORG_RESOURCE_NAME")
     project_resource_name = (
         f"//cloudresourcemanager.googleapis.com/projects/{project_id}"
@@ -180,10 +178,10 @@ def sync(
     project_id: str,
     update_tag: int,
     common_job_parameters: dict[str, Any],
-    credentials: GoogleCredentials | None = None,
+    client: AssetServiceClient,
 ) -> None:
     bindings_data = get_policy_bindings(
-        project_id, common_job_parameters=common_job_parameters, credentials=credentials
+        project_id, common_job_parameters=common_job_parameters, client=client
     )  # Why pass common_job_parameters here? Because we need to get the org_id for getting inherited policies.
 
     transformed_bindings_data = transform_bindings(bindings_data)

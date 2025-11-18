@@ -12,7 +12,7 @@ from cartography.models.core.relationships import TargetNodeMatcher
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingNodeProperties(CartographyNodeProperties):
+class GCPPolicyBindingNodeProperties(CartographyNodeProperties):
     id: PropertyRef = PropertyRef("id")
     role: PropertyRef = PropertyRef("role")
     resource: PropertyRef = PropertyRef("resource")
@@ -25,69 +25,69 @@ class GCPIAMPolicyBindingNodeProperties(CartographyNodeProperties):
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingToProjectRelProperties(CartographyRelProperties):
+class GCPPolicyBindingToProjectRelProperties(CartographyRelProperties):
     lastupdated: PropertyRef = PropertyRef("lastupdated", set_in_kwargs=True)
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingToProjectRel(CartographyRelSchema):
+class GCPPolicyBindingToProjectRel(CartographyRelSchema):
     target_node_label: str = "GCPProject"
     target_node_matcher: TargetNodeMatcher = make_target_node_matcher(
         {"id": PropertyRef("PROJECT_ID", set_in_kwargs=True)},
     )
     direction: LinkDirection = LinkDirection.INWARD
     rel_label: str = "RESOURCE"
-    properties: GCPIAMPolicyBindingToProjectRelProperties = (
-        GCPIAMPolicyBindingToProjectRelProperties()
+    properties: GCPPolicyBindingToProjectRelProperties = (
+        GCPPolicyBindingToProjectRelProperties()
     )
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingToPrincipalRelProperties(CartographyRelProperties):
+class GCPPolicyBindingToPrincipalRelProperties(CartographyRelProperties):
     lastupdated: PropertyRef = PropertyRef("lastupdated", set_in_kwargs=True)
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingToPrincipalRel(CartographyRelSchema):
+class GCPPolicyBindingToPrincipalRel(CartographyRelSchema):
     target_node_label: str = "GCPPrincipal"
     target_node_matcher: TargetNodeMatcher = make_target_node_matcher(
         {"email": PropertyRef("members", one_to_many=True)},
     )
     direction: LinkDirection = LinkDirection.INWARD
     rel_label: str = "HAS_ALLOW_POLICY"
-    properties: GCPIAMPolicyBindingToPrincipalRelProperties = (
-        GCPIAMPolicyBindingToPrincipalRelProperties()
+    properties: GCPPolicyBindingToPrincipalRelProperties = (
+        GCPPolicyBindingToPrincipalRelProperties()
     )
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingToRoleRelProperties(CartographyRelProperties):
+class GCPPolicyBindingToRoleRelProperties(CartographyRelProperties):
     lastupdated: PropertyRef = PropertyRef("lastupdated", set_in_kwargs=True)
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingToRoleRel(CartographyRelSchema):
+class GCPPolicyBindingToRoleRel(CartographyRelSchema):
     target_node_label: str = "GCPRole"
     target_node_matcher: TargetNodeMatcher = make_target_node_matcher(
         {"name": PropertyRef("role")},
     )
     direction: LinkDirection = LinkDirection.OUTWARD
     rel_label: str = "GRANTS_ROLE"
-    properties: GCPIAMPolicyBindingToRoleRelProperties = (
-        GCPIAMPolicyBindingToRoleRelProperties()
+    properties: GCPPolicyBindingToRoleRelProperties = (
+        GCPPolicyBindingToRoleRelProperties()
     )
 
 
 @dataclass(frozen=True)
-class GCPIAMPolicyBindingSchema(CartographyNodeSchema):
-    label: str = "GCPIAMPolicyBinding"
-    properties: GCPIAMPolicyBindingNodeProperties = GCPIAMPolicyBindingNodeProperties()
-    sub_resource_relationship: GCPIAMPolicyBindingToProjectRel = (
-        GCPIAMPolicyBindingToProjectRel()
+class GCPPolicyBindingSchema(CartographyNodeSchema):
+    label: str = "GCPPolicyBinding"
+    properties: GCPPolicyBindingNodeProperties = GCPPolicyBindingNodeProperties()
+    sub_resource_relationship: GCPPolicyBindingToProjectRel = (
+        GCPPolicyBindingToProjectRel()
     )
     other_relationships: OtherRelationships = OtherRelationships(
         [
-            GCPIAMPolicyBindingToPrincipalRel(),
-            GCPIAMPolicyBindingToRoleRel(),
+            GCPPolicyBindingToPrincipalRel(),
+            GCPPolicyBindingToRoleRel(),
         ]
     )

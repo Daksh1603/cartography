@@ -716,7 +716,7 @@ Representation of a GCP [Role](https://cloud.google.com/iam/docs/reference/rest/
     (GCPRole)-[RESOURCE]->(GCPProject)
     ```
 
-### GCPIAMPolicyBinding
+### GCPPolicyBinding
 
 Representation of a GCP [IAM Policy Binding](https://cloud.google.com/iam/docs/reference/rest/v1/Policy#Binding). Policy bindings connect principals (users, service accounts, groups) to roles on specific resources.
 
@@ -735,22 +735,22 @@ Representation of a GCP [IAM Policy Binding](https://cloud.google.com/iam/docs/r
 
 #### Relationships
 
-- GCPIAMPolicyBindings are resources of GCPProjects.
+- GCPPolicyBindings are resources of GCPProjects.
 
     ```
-    (GCPProject)-[:RESOURCE]->(GCPIAMPolicyBinding)
+    (GCPProject)-[:RESOURCE]->(GCPPolicyBinding)
     ```
 
 - GCPPrincipals have allow policies that grant them access.
 
     ```
-    (GCPPrincipal)-[:HAS_ALLOW_POLICY]->(GCPIAMPolicyBinding)
+    (GCPPrincipal)-[:HAS_ALLOW_POLICY]->(GCPPolicyBinding)
     ```
 
-- GCPIAMPolicyBindings grant roles to principals.
+- GCPPolicyBindings grant roles to principals.
 
     ```
-    (GCPIAMPolicyBinding)-[:GRANTS_ROLE]->(GCPRole)
+    (GCPPolicyBinding)-[:GRANTS_ROLE]->(GCPRole)
     ```
 
 ### GCPBigtableInstance

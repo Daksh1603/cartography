@@ -162,7 +162,7 @@ def get_principals_for_project(
     get_principals_query = """
     MATCH
     (project:GCPProject{id: $ProjectId})-[:RESOURCE]->
-    (binding:GCPIAMPolicyBinding)-[:GRANTS_ROLE]->
+    (binding:GCPPolicyBinding)-[:GRANTS_ROLE]->
     (role:GCPRole)
     MATCH
     (principal:GCPPrincipal)-[:HAS_ALLOW_POLICY]->(binding)

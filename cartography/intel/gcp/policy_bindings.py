@@ -10,7 +10,7 @@ from google.protobuf.json_format import MessageToDict
 
 from cartography.client.core.tx import load
 from cartography.graph.job import GraphJob
-from cartography.models.gcp.policy_bindings import GCPIAMPolicyBindingSchema
+from cartography.models.gcp.policy_bindings import GCPPolicyBindingSchema
 from cartography.util import timeit
 
 logger = logging.getLogger(__name__)
@@ -153,7 +153,7 @@ def load_bindings(
 ) -> None:
     load(
         neo4j_session,
-        GCPIAMPolicyBindingSchema(),
+        GCPPolicyBindingSchema(),
         bindings,
         lastupdated=update_tag,
         PROJECT_ID=project_id,
@@ -168,7 +168,7 @@ def cleanup(
     logger.debug("Running GCP policy bindings cleanup job")
 
     GraphJob.from_node_schema(
-        GCPIAMPolicyBindingSchema(),
+        GCPPolicyBindingSchema(),
         common_job_parameters,
     ).run(neo4j_session)
 

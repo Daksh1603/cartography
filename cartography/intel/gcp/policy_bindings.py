@@ -73,7 +73,6 @@ def get_policy_bindings(
     }
 
 
-@timeit
 def transform_bindings(data: dict[str, Any]) -> list[dict[str, Any]]:
     project_id = data["project_id"]
     bindings: dict[tuple[str, str], dict[str, Any]] = {}

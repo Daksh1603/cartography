@@ -1,11 +1,19 @@
 import logging
 import os
 import re
+from datetime import datetime
 from string import Template
 from typing import Any
 
 import neo4j
 import yaml
+
+try:
+    from celpy import Environment
+
+    CEL_AVAILABLE = True
+except ImportError:
+    CEL_AVAILABLE = False
 
 from cartography.client.core.tx import load_matchlinks
 from cartography.client.core.tx import read_list_of_dicts_tx
@@ -87,22 +95,128 @@ def evaluate_permission_for_permission(permissions: dict, permission: str) -> bo
     return False
 
 
+def _get_resource_type_from_scope(resource_scope: str) -> str:
+    """
+    Infer GCP resource type from resource scope.
+
+    Args:
+        resource_scope: The resource scope string
+
+    Returns:
+        Resource type string (e.g., 'storage.googleapis.com/Bucket')
+    """
+    scope_lower = resource_scope.lower()
+    if "bucket" in scope_lower:
+        return "storage.googleapis.com/Bucket"
+    elif "instance" in scope_lower:
+        return "compute.googleapis.com/Instance"
+    else:
+        return ""
+
+
+def evaluate_condition_expression(
+    condition_expression: str,
+    resource_id: str | None,
+    resource_scope: str,
+) -> bool:
+    """
+    Evaluate a GCP IAM condition expression (CEL - Common Expression Language).
+
+    Uses the cel-python library to properly evaluate CEL expressions.
+    For conditions that cannot be fully evaluated (e.g., missing request attributes),
+    we return True (conservative approach) to avoid missing potential permissions.
+
+    Args:
+        condition_expression: The CEL expression string
+        resource_id: The resource ID (e.g., bucket name, instance ID)
+        resource_scope: The resource scope (e.g., project/project-123/resource/bucket-name)
+
+    Returns:
+        True if condition evaluates to true or cannot be evaluated, False otherwise
+    """
+    if not condition_expression:
+        return True
+
+    if not CEL_AVAILABLE:
+        logger.warning(
+            "cel-python library not available. Install it with: pip install cel-python. "
+            f"Assuming condition is true: {condition_expression}"
+        )
+        return True
+
+    try:
+        # Build context for CEL evaluation with GCP IAM condition variables
+        context: dict[str, Any] = {}
+
+        # Set request.time to current time (epoch seconds)
+        context["request"] = {
+            "time": int(datetime.utcnow().timestamp()),
+        }
+
+        # Set resource attributes if available
+        if resource_id:
+            # Extract resource name from resource_id (last part after /)
+            resource_name = resource_id.split("/")[-1]
+            resource_type = _get_resource_type_from_scope(resource_scope)
+
+            context["resource"] = {
+                "name": resource_name,
+                "type": resource_type,
+            }
+
+        # Create CEL environment and compile expression
+        env = Environment()
+        ast = env.compile(condition_expression)
+        program = env.program(ast)
+
+        # Evaluate the expression with context
+        result = program.evaluate(context)
+
+        # CEL returns boolean values, convert to Python bool
+        if isinstance(result, bool):
+            return result
+        else:
+            # If result is not a boolean, log and return True conservatively
+            logger.debug(
+                f"Condition expression returned non-boolean result: {result}. "
+                f"Expression: {condition_expression}. Assuming true."
+            )
+            return True
+
+    except Exception as e:
+        # If anything goes wrong, be conservative and return True
+        logger.warning(
+            f"Error evaluating condition expression '{condition_expression}': {e}. "
+            "Assuming condition is true to avoid missing permissions."
+        )
+        return True
+
+
 def evaluate_policy_binding_for_permissions(
     assignment_data: dict[str, Any],
     permissions: list[str],
     resource_scope: str,
+    resource_id: str | None = None,
 ) -> bool:
     permissions_dict = assignment_data["permissions"]
     scope = assignment_data["scope"]
+    condition_expression = assignment_data.get("condition_expression")
 
     # Level 1: Check scope matching
     if not evaluate_scope_for_resource({"scope": scope}, resource_scope):
         return False
 
+    # Level 2: Check condition (if present)
+    if condition_expression:
+        if not evaluate_condition_expression(
+            condition_expression, resource_id, resource_scope
+        ):
+            return False
+
     for permission in permissions:
-        # Level 2: Check denied permissions
+        # Level 3: Check denied permissions
         if not evaluate_denied_permission_for_permission(permissions_dict, permission):
-            # Level 3: Check allowed permissions
+            # Level 4: Check allowed permissions
             if evaluate_permission_for_permission(permissions_dict, permission):
                 return True
 
@@ -113,10 +227,11 @@ def principal_allowed_on_resource(
     policy_bindings: dict[str, Any],
     resource_scope: str,
     permissions: list[str],
+    resource_id: str | None = None,
 ) -> bool:
     for _, assignment_data in policy_bindings.items():
         if evaluate_policy_binding_for_permissions(
-            assignment_data, permissions, resource_scope
+            assignment_data, permissions, resource_scope, resource_id
         ):
             return True
 
@@ -132,7 +247,7 @@ def calculate_permission_relationships(
     for resource_id, resource_scope in resource_dict.items():
         for principal_email, policy_bindings in principals.items():
             if principal_allowed_on_resource(
-                policy_bindings, resource_scope, permissions
+                policy_bindings, resource_scope, permissions, resource_id
             ):
                 allowed_mappings.append(
                     {
@@ -149,7 +264,7 @@ def get_principals_for_project(
 ) -> dict[str, Any]:
     """
     Get all principals (users, service accounts, groups) with their policy bindings
-    for a given GCP project.
+    for a given GCP project. Now includes bindings with conditions.
     """
     get_principals_query = """
     MATCH
@@ -158,10 +273,11 @@ def get_principals_for_project(
     (role:GCPRole)
     MATCH
     (principal:GCPPrincipal)-[:HAS_ALLOW_POLICY]->(binding)
-    WHERE binding.has_condition = false
     RETURN
     DISTINCT principal.email as principal_email, binding.id as binding_id,
-    binding.resource as binding_resource, role.permissions as role_permissions
+    binding.resource as binding_resource, role.permissions as role_permissions,
+    binding.has_condition as has_condition,
+    binding.condition_expression as condition_expression
     """
 
     results = neo4j_session.execute_read(
@@ -176,6 +292,8 @@ def get_principals_for_project(
         binding_id = r["binding_id"]
         binding_resource = r["binding_resource"]
         role_permissions = r["role_permissions"] or []
+        has_condition = r.get("has_condition", False)
+        condition_expression = r.get("condition_expression")
 
         if principal_email not in principals:
             principals[principal_email] = {}
@@ -189,6 +307,7 @@ def get_principals_for_project(
         principals[principal_email][binding_id] = {
             "permissions": compiled_permissions,
             "scope": compiled_scope,
+            "condition_expression": condition_expression if has_condition else None,
         }
 
     return principals
